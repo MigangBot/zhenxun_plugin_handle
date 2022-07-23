@@ -22,6 +22,7 @@ from nonebot.adapters.onebot.v11 import (
 
 from .utils import random_idiom
 from .data_source import Handle, GuessResult
+from models.bag_user import BagUser
 
 __plugin_meta__ = PluginMetadata(
     name="猜成语",
@@ -43,6 +44,32 @@ __plugin_meta__ = PluginMetadata(
     },
 )
 
+__zx_plugin_name__ = "猜成语"
+__plugin_usage__ = """
+usage：
+    汉字Wordle 猜成语
+    你有十次的机会猜一个四字词语
+    每次猜测后，汉字与拼音的颜色将会标识其与正确答案的区别
+    青色 表示其出现在答案中且在正确的位置
+    橙色 表示其出现在答案中但不在正确的位置
+    当四个格子都为青色时，你便赢得了游戏！
+    指令：
+        猜成语（需要at）  ：开始游戏
+        结束            ：结束游戏
+        提示            ：查看提示
+""".strip()
+__plugin_des__ = "汉字Wordle 猜成语"
+__plugin_type__ = ("群内小游戏",)
+__plugin_cmd__ = ["猜成语", "提示", "结束"]
+__plugin_version__ = 0.1
+__plugin_author__ = "migang & meetwq"
+
+__plugin_settings__ = {
+    "level": 5,
+    "default_status": True,
+    "limit_superuser": False,
+    "cmd": __plugin_cmd__,
+}
 
 parser = ArgumentParser("handle", description="猜成语")
 parser.add_argument("--hint", action="store_true", help="提示")
@@ -192,8 +219,11 @@ async def handle_handle(matcher: Matcher, event: MessageEvent, argv: List[str]):
     result = game.guess(idiom)
     if result in [GuessResult.WIN, GuessResult.LOSS]:
         games.pop(cid)
+        if result == GuessResult.WIN:
+            await BagUser.add_gold(event.user_id, event.group_id, 200)
+            text = f"\n[CQ:at,qq={event.user_id}]你获得了200金币，目前金币余额为{str(await BagUser.get_gold(event.user_id, event.group_id))}"
         await send(
-            ("恭喜你猜出了成语！" if result == GuessResult.WIN else "很遗憾，没有人猜出来呢")
+            (f"恭喜你猜出了成语！{text}" if result == GuessResult.WIN else "很遗憾，没有人猜出来呢")
             + f"\n{game.result}",
             game.draw(),
         )
